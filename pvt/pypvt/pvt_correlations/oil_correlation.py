@@ -416,17 +416,24 @@ class Oil():
         return bob
 
 
-    def sg_evolved_gas(self,press: float, temp: float, rsb: float, sto_api: float, sg: float, unit_system="metric") -> float:
-        """ 
-        Returns estimated specific gravity of gas evolved from oil insitu due to depressurization below Pb
+    def sg_evolved_gas(self,press: float, temp: float, rsb: float, sto_api: float, sg_gas: float, unit_system="metric") -> float:
+        """ Returns estimated specific gravity of gas evolved from oil insitu due to depressurization below Pb
         uses McCain & Hill Correlation (1995, SPE 30773)
 
-            press: Pressure 
-            temp: Temperature 
-            rsb: Oil solution GOR at Pb 
-            api: Stock tank oil density (API)
-            sg: Specific gravity of separator gas (relative to air)
-        """ 
+        Args:
+            press (float): Pressure
+            temp (float): Temperature
+            rsb (float): GOR at standard conditions
+            sto_api (float): Oil Api
+            sg_gas (float): gas sg
+            unit_system (str, optional): _description_. Defaults to "metric".
+
+        Raises:
+            ValueError: _description_
+
+        Returns:
+            float: _description_
+        """
 
         if unit_system.lower() not in ["metric", "field"]:
             raise ValueError("Unknown unit system")
@@ -435,7 +442,7 @@ class Oil():
 
             # Correlation is in field units
         if unit_system.lower() == "metric":
-                rs = ucnv(rs, "m3/m3", "ft3/bbl")
+                rsb = ucnv(rsb, "m3/m3", "ft3/bbl")
                 press = ucnv(press, "bar", "psi")
                 temp = ucnv(temp, "c", "f")
 
@@ -444,9 +451,10 @@ class Oil():
         else:
             a = [0,-214.0887,9971,-0.001303,3.12715,-0.001495,-0.000085243,-0.003667,1.47156,0.714002,]
         one_on_sgr = (a[1] / press+ a[2] / press ** 2+ a[3] * press + a[4] / temp ** 0.5 + a[5] * temp
-                + a[6] * rsb + a[7] * sto_api + a[8] / sg + a[9] * sg ** 2)  # 
-           
-        sg_egas = max(1 / one_on_sgr , sg)
+                + a[6] * rsb + a[7] * sto_api + a[8] / sg_gas + a[9] * sg_gas ** 2)  # 
+
+        #print (one_on_sgr)           
+        sg_egas = max(1 / one_on_sgr , sg_gas)
 
         return sg_egas
 
@@ -486,6 +494,7 @@ class Oil():
             ]
         Zn = [sum([C[i][n] * var[n] ** i for i in range(5)]) for n in range(5)]
         Z = sum(Zn)
+
         sg_st = (1.219 + 0.198 * Z + 0.0845 * Z ** 2 + 0.03 * Z ** 3 + 0.003 * Z ** 4)
 
         return sg_st
@@ -586,7 +595,7 @@ class Oil():
 
 
 
-    def oil_den (self, press: float, temp: float, rs: float = 0, sg_gas: float = 0, sg_sp: float = 0,
+    def oil_den (self, press: float, temp: float, rs: float = 0, sg_gas: float = 0,
         pb: float = 0, sg_oil: float = 0, sto_api: float = 0, bob : float = 0,correlation: str = "petrosky", unit_system:str = "metric") -> float:
 
         """ Returns live oil density calculated with different correlations
@@ -631,14 +640,16 @@ class Oil():
             if unit_system.lower() == "metric":
                     rs = ucnv(rs , "m3/m3", "ft3/bbl")       
             rho = ((62.4 * sg_oil) + (0.0136 * rs * sg_gas)) / bob
-            
+        #print(f"press: {press} and pb: {pb}")
         if press <= pb:
+            rs = self.rsbub(sto_api=sto_api, temp=temp , press=press, sg_gas=sg_gas, unit_system=unit_system, correlation = correlation)
 
             # Correlation is in field units
             if unit_system.lower() == "metric":
                     temp = ucnv(temp, "c", "f")
                     rs = ucnv(rs , "m3/m3", "ft3/bbl")
-                    
+           
+            #print (rs)        
             a = (62.4 * sg_oil + 0.0136 * rs * sg_gas)
             b = 0.972 + (0.000147 * ((rs *(sg_gas/sg_oil)**0.5)+ 1.25 * temp)** 1.175)
             rho = a / b
@@ -672,16 +683,21 @@ class Oil():
                 a = (62.4 * sg_oil + 0.0136 * rs * sg_gas)
                 b = 0.972 + (0.000147 * ((rs *(sg_gas/sg_oil)**0.5)+ 1.25 * temp)** 1.175)
                 rhob = a / b
-                rsb = self.rsbub(sto_api=sto_api, temp=temp , press=pb, sg_gas=sg_gas, unit_system=unit_system)  
+                rsb = self.calculate_rs (sto_api=sto_api, temp=temp , press=press, pb=pb, sg_gas=sg_gas, unit_system=unit_system)  
 
                 A =   4.1646 * (10 **-7) * (rsb**0.69357) * sg_gas**0.1885 * sto_api**0.3273 * temp**0.6729
                 
+                
+
                 rho = rhob * np.exp(A * (press**0.4094 - pb**0.4094))
-  
-        
+                
+
+                #print(f"press {press} rho {rho}  pb {pb}  {rhob}")
         if unit_system == "metric":
               #print("density generated in Kg/m3")
               rho = ucnv(rho, "lb/ft3", "kg/m3")
+        
+        
         
         return rho
     
@@ -734,7 +750,7 @@ class Oil():
              warnings.warn("something wrong compressibility not generated, verify inputs")
              co = np.nan
         if unit_system == "metric":
-              print("compressibility in bar")
+              #print("compressibility in bar")
               co = ucnv(co, "1/psi", "1/bar") 
         return co            
 
@@ -781,17 +797,15 @@ class Oil():
             raise ValueError("Unknown unit system")
 
         ucnv = UnitConverter().convert
-        if rs == 0 :
-            #print ("no rs inputs --> calculating it ")
-            #sto_api = self.calc_api(calc_dens_sto=sg_oil)
-            rs = self.rsbub(sto_api=sto_api, temp=temp , press=press, sg_gas=sg_gas, unit_system=unit_system, correlation = correlation)
-        if pb == 0:
-            print ("no bubble point pressure inp")
+
+        if pb == 0 and rs != 0:
+            #print ("no bubble point pressure inp")
             pb = self.oil_pbubble(rs= rs, sto_api=sto_api, sg_gas=sg_gas, temp=temp,  unit_system=unit_system, correlation=correlation)
 
 
         if press < (pb): 
-            warnings.warn("pressure lower than pb")
+            #warnings.warn("pressure lower than pb")
+            rs = self.rsbub(sto_api=sto_api, temp=temp , press=press, sg_gas=sg_gas, unit_system=unit_system, correlation = correlation)
             bo = self.oil_bob(temp=temp, rs=rs, sto_api=sto_api, sg_gas=sg_gas, unit_system = unit_system, correlation = correlation)
         else:
             
@@ -812,10 +826,11 @@ class Oil():
             #a = 4.1646* (10**-7) * (rsb**0.69357) * (sg_gas**0.1885) *(sto_api**0.3272) *(temp**0.6729)
 
             a = 10**-5 * (-1433 + (5*rsb) + (17.2* temp) - (1180*sg_gas)+ (12.61* sto_api))
-            
+
+            #print(a)   
 
             bo = bob * np.exp (-a * np.log(press/pb))
-            #bo = bob * np.exp(-a * (press**0.4094-pb**0.4094))
+
         
         return bo
 

@@ -127,39 +127,38 @@ class DryGas():
 
         if correlation == "DAK":
             #print(T_pr, P_pr)
-            if T_pr > 1 and T_pr < 3 and P_pr > 0.2 and P_pr < 30:
-                a1 = 0.3265; a2 = -1.0700; a3 = -0.5339; a4 = 0.01569; a5 = -0.05165; a6 = 0.5475
-                a7 = -0.7361; a8 = 0.1844; a9 = 0.1056; a10 = 0.6134; a11 = 0.7210
 
-                def f(y):
-                    rho_pr, z = y
-                    c1 = a1 + (a2/T_pr) + (a3/(T_pr**3))+ (a4/(T_pr**4))+ (a5/(T_pr**5))
-                    c2 = a6 + (a7/T_pr) + (a8/(T_pr**2))
-                    c3 = a9*((a7/T_pr) + (a8/(T_pr**2)))
-                    c4 = (a10)*(1+(a11*(rho_pr**2)))*((rho_pr**2)/(T_pr**3))*(np.exp(-a11*(rho_pr**2)))
+            a1 = 0.3265; a2 = -1.0700; a3 = -0.5339; a4 = 0.01569; a5 = -0.05165; a6 = 0.5475
+            a7 = -0.7361; a8 = 0.1844; a9 = 0.1056; a10 = 0.6134; a11 = 0.7210
 
-                    f1 = z + (c3*(rho_pr**5)) - (c2*(rho_pr**2)) - (c1*(rho_pr**1)) - c4 - 1
-                    f2 = rho_pr - ((0.27 * P_pr) / (z * T_pr))
-                    return[f1, f2]
+            def f(y):
+                rho_pr, z = y
+                c1 = a1 + (a2/T_pr) + (a3/(T_pr**3))+ (a4/(T_pr**4))+ (a5/(T_pr**5))
+                c2 = a6 + (a7/T_pr) + (a8/(T_pr**2))
+                c3 = a9*((a7/T_pr) + (a8/(T_pr**2)))
+                c4 = (a10)*(1+(a11*(rho_pr**2)))*((rho_pr**2)/(T_pr**3))*(np.exp(-a11*(rho_pr**2)))
 
-                _, z_factor = fsolve(f, [1, 1]) # initial guess
-            else: 
-                raise ValueError("Not Applicable for the Tr and Pr Ranges ")
+                f1 = z + (c3*(rho_pr**5)) - (c2*(rho_pr**2)) - (c1*(rho_pr**1)) - c4 - 1
+                f2 = rho_pr - ((0.27 * P_pr) / (z * T_pr))
+                return[f1, f2]
+
+            _, z_factor = fsolve(f, [1, 1]) # initial guess
+
 
         elif correlation == "Wang" : 
-            if T_pr > 1 and T_pr < 3 and P_pr > 0.2 and P_pr < 30:
-                a1 = 256.41675; a2 = 7.18202; a3 = -178.57250; a4 = 182.98704; a5 = -40.74427; a6 = 2.24427
-                a7 = 47.44825; a8 = 5.28520; a9 = -0.14914; a10 = 271.50446; a11 = 16.2694; a12= -121.51728
-                a13 = 167.71477; a14 = -81.73093; a15= 20.36191; a16= -2.1170; a17=124.6444; a18= -6.74331
-                a19 = 0.20897; a20= -0.00314 
 
-                c1 = a1 + a2* (1+ a3* T_pr + a4 * T_pr**2 + a5 * T_pr**3 + a6 * T_pr**4) * P_pr 
-                c2 = a7* P_pr**2 + a8 * P_pr**3 + a9 * P_pr**4 
-                c3 = a10 + a11 *(1+ a12* T_pr + a13* T_pr**2 + a14*  T_pr**3 + a15 * T_pr**4 + a16 * T_pr**5) * P_pr 
-                c4 = a17 * P_pr**2 + a18 * P_pr**3 + a19 * P_pr**4 + a20 * P_pr**5 
+            a1 = 256.41675; a2 = 7.18202; a3 = -178.57250; a4 = 182.98704; a5 = -40.74427; a6 = 2.24427
+            a7 = 47.44825; a8 = 5.28520; a9 = -0.14914; a10 = 271.50446; a11 = 16.2694; a12= -121.51728
+            a13 = 167.71477; a14 = -81.73093; a15= 20.36191; a16= -2.1170; a17=124.6444; a18= -6.74331
+            a19 = 0.20897; a20= -0.00314 
+
+            c1 = a1 + a2* (1+ a3* T_pr + a4 * T_pr**2 + a5 * T_pr**3 + a6 * T_pr**4) * P_pr 
+            c2 = a7* P_pr**2 + a8 * P_pr**3 + a9 * P_pr**4 
+            c3 = a10 + a11 *(1+ a12* T_pr + a13* T_pr**2 + a14*  T_pr**3 + a15 * T_pr**4 + a16 * T_pr**5) * P_pr 
+            c4 = a17 * P_pr**2 + a18 * P_pr**3 + a19 * P_pr**4 + a20 * P_pr**5 
 
 
-                z_factor = (c1 + c2) /(c3+c4)
+            z_factor = (c1 + c2) /(c3+c4)
                 
   
         elif correlation == "Equinor":
@@ -254,7 +253,7 @@ class DryGas():
 
         rhogas = (28.97 * sg * press) / (z_factor * R * temp)
         if unit_system.lower() == "metric":
-            print("density converted to kg/m3 ")
+            #print("density converted to kg/m3 ")
             rhogas = UnitConverter().convert(rhogas, "lb/ft3", "kg/m3")
         return rhogas 
 
@@ -329,10 +328,10 @@ class DryGas():
                 temp = temp + 459.67
                 Mg = 28.97 * sg
                 rhogas_lee = rhogas / 62.4 # lbm/ft3 converted to gas density unit of Lee et al (g/cm3)
-                K = ((0.00094 + 2E-06*Mg)*(temp**1.5)) / (209 + 19*Mg + temp)
+                K = ((9.4 + 0.02*Mg)*(temp**1.5)) / (209 + 19*Mg + temp)
                 x = 3.5 + (986 / temp) + (0.01 * Mg)
                 y = 2.4 - 0.2*x  
-                viscogas = K * np.exp(x * (rhogas_lee**y))
+                viscogas = K * np.exp(x * (rhogas_lee**y)) * 10**-4
         
         elif correlation == "Lucas":
             if T_pr >=1 and T_pr <= 40 and P_pr >=0 and P_pr <= 100:
@@ -404,7 +403,7 @@ class DryGas():
         cg = cpr / P_pc
         
         if unit_system.lower() == "metric":
-            print("density converted to 1/bar ")
+            #print("density converted to 1/bar ")
             cg = UnitConverter().convert(cg, "1/psi", "1/bar")
 
         return(cg)
@@ -415,15 +414,9 @@ class DryGas():
         if unit_system.lower() not in ["metric", "field"]:
             raise ValueError("Unknown unit system")        
 
-        if unit_system.lower() == "metric":
-            temp = UnitConverter().convert(temp_i, "c", "f")
-        else: 
-            temp = temp_i
 
-        if unit_system.lower() == "metric":
-            press = UnitConverter().convert(press, "bar", "psi")
-        else:
-            press = press_i
+        temp = temp_i
+        press = press_i
 
 
         if not z_factor:
@@ -448,5 +441,97 @@ class DryGas():
         pseudopress = pnew
 
         return pseudopress 
+    
+    def dzdp (self, temp_i:float, press_i:float, sg_gas:float, z_factor=None, P_pc =None,
+              T_pc =None,x_h2s=0, x_co2=0, x_n2=0, unit_system="metrics"):
+        """calcualte dzdp 
 
+        Args:
+            temp_i (float): temperature
+            press_i (float): pressure
+            sg_gas (float): gas gravity
+            z_factor (_type_, optional): _description_. Defaults to None.
+            unit_system (str, optional): _description_. Defaults to "metrics".
+        """
+
+
+        if unit_system.lower() not in ["metric", "field"]:
+            raise ValueError("Unknown unit system")
+
+        if unit_system.lower() == "metric":
+            temp = UnitConverter().convert(temp_i, "c", "f")
+        else : 
+            temp = temp_i
+
+        if unit_system.lower() == "metric":
+                press = UnitConverter().convert(press_i, "bar", "psi")
+        else:
+            press = press_i
+
+
+
+        if not P_pc or not T_pc:
+            (P_pc, T_pc, P_pr, T_pr) = self.gas_pseudoprops(temp_i = temp_i, press_i = press_i, sg=sg_gas, x_h2s=x_h2s, x_co2=x_co2,x_n2=x_n2, unit_system = unit_system)
+        else:
+            temp_R = temp + 459.67 # convert to Rankine 
+            P_pr = press / P_pc
+            T_pr = temp_R / T_pc         
+
+        if not z_factor:
+            z_factor = self.gas_zfactor( temp_i , press_i , sg_gas, x_h2s=0, x_co2=0,x_n2=0,P_pc =None, T_pc=None, correlation ="DAK", unit_system = unit_system )
+
+        T = 1 / T_pr
+        alpha = 0.06125 * T * np.exp(-1.2 * (1 - T) ** 2)
+        y = alpha * P_pr / z_factor 
+
+        dfdy = (1 + 4 * y + 4 * y ** 2 - 4 * y ** 3 + y ** 4) / (1 - y) ** 4 - (29.52 * T - 19.52 * T ** 2 + 9.16 * T ** 3) * y + (2.18 + 2.82 * T) * (90.7 * T - 242.2 * T ** 2 + 42.4 * T ** 3) * y ** (1.18 + 2.82 * T)  
+
+        dzdp = alpha / P_pc * (1/y - alpha * P_pr/y**2/dfdy)
+
+        return dzdp 
+    
+
+    def gas_rv (self, sto_api:float, sg_gas:float, temp_i:float, press_i:float, unit_system ="metric"):
+        """ estimate gas RV based on Ovalle et al's correlation
+
+        Args:
+
+            zfactor (float): z factor
+            sto_api (float): sto api for the condensate
+            sg_gas (float): specific gravity for the gas
+            temp (float):  temperature
+            press (float): Pressure
+        """
+
+        if unit_system.lower() not in ["metric", "field"]:
+            raise ValueError("Unknown unit system")
+
+        if unit_system.lower() == "metric":
+            temp = UnitConverter().convert(temp_i, "c", "f")
+        else : 
+            temp = temp_i
+
+        if unit_system.lower() == "metric":
+                press = UnitConverter().convert(press_i, "bar", "psi")
+        else:
+            press = press_i
+
+        
+        c1 = 20.809 + (-6.7095 * np.log(press)) + (0.5136 * np.log(press)**2)
+        c2 = 11.175 + (-1.2985 * sto_api) +(0.042311 * sto_api**2) + (-0.0005438 * sto_api**3) + (2.49e-6 * sto_api**4)
+        c3 = -13.386 + (27.652 * sg_gas) + (-18.598 * sg_gas**2)  + (4.3658 * sg_gas**3)
+        c4 = -1.5309 + (0.0058453 * temp) + (1.40e-6 * temp**2) 
+
+        #print(c1, c2 ,c3, c4)
+        z = c1 + c2 + c3 + c4 
+        #print(z)
+
+        a = 3.684 + (0.61974 * z ) + (0.015359 * z**2)
+        rv = np.exp (a) * 1e-6    #(unit is stb/scf)
+
+        if unit_system =="metric":
+             rv = UnitConverter().convert(rv ,"ft3/bbl", "m3/m3" )
+
+
+        return rv
 
