@@ -159,25 +159,33 @@ class OilGas :
             df = self.get_bo_pvt_table()
 
             d = list()
+
+            # build the pressure table 
+            pbs =[]
+            for rsb in df['rs'] : 
+                # calculate pb 
+                pbs.append(Oil().oil_pbubble(sto_api=self.sto_api, sg_gas=self.sg_gas, temp= self.temp, rs =rsb, unit_system=self.unit_system))
+            
+            n= max(pbs)
+            if self.pmax > n:
+                pbs += [n + (i*(self.pmax - n)/10)  for i in range (1,10)]
             for rsb in df['rs'] : 
                 # calculate pb 
 
                 pb = Oil().oil_pbubble(sto_api=self.sto_api, sg_gas=self.sg_gas, temp= self.temp, rs =rsb, unit_system=self.unit_system)
 
-                p = self.pmin 
-
-                while p <= self.pmax:
-                    if pb < p : 
+                for p in set(sorted(pbs)):
+                    if p >= pb : 
                         bo = Oil().oil_bo(press=p, temp= self.temp, sg_gas=self.sg_gas, pb=pb, sto_api=self.sto_api)
                         mu = Oil().oil_viscosity(sto_api=self.sto_api, temp=self.temp , press=p , pb= pb, rs=rsb, oiltype="undersaturated",correlation = "vasquezbeggs", unit_system=self.unit_system)
 
                         d.append( {"pressure": p , "pb": pb, "rsb":rsb , "bo":bo, "visco":mu})
                     
-                    p += (self.pmax-self.pmin)/10
+
             
 
 
-            df_results = pd.DataFrame(d)
+            df_results = pd.DataFrame(d).sort_values(['rsb', 'pressure'], ascending = [True, True]).drop_duplicates(keep='first')
             
             #export pvto data: 
 
@@ -197,7 +205,7 @@ class OilGas :
                 text_file.write("PVTW\n")
                 bw = Water().waterFvf(press = self.p_ref, temp=self.temp, salt=self.salt , unit_system=self.unit_system)
                 cw = Water().waterCompressibility(press=self.p_ref, temp=self.temp, salt=self.salt, unit_system=self.unit_system)
-                vw = Water().waterViscosity(press= self.p_ref, salt=self.salt, unit_system=self.unit_system)
+                vw = Water().waterViscosity(temp=self.temp, press= self.p_ref, salt=self.salt, unit_system=self.unit_system)
                 text_file.write(f"   {self.p_ref:.1f}      {bw:.3f}    {cw:.3f}    {vw:.3f}    / \n")
 
 
@@ -220,12 +228,12 @@ class OilGas :
                         rs = rs/1000
                     for _, row in temp.iterrows():
                         if r ==0: 
-                            text_file.write(f"{rs:.1f}      {row['pressure']:.1f}      {row['bo']:.4f}        {row['visco']:.4f}  \n")
+                            text_file.write(f"{rs:.1f}      {row['pressure']:.1f}      {row['bo']:.5f}        {row['visco']:.5f}  \n")
                         else: 
                             if row['pressure'] == np.max(temp['pressure']):
-                                text_file.write(f"          {row['pressure']:.1f}      {row['bo']:.4f}        {row['visco']:.4f} / \n")                            
+                                text_file.write(f"          {row['pressure']:.1f}      {row['bo']:.5f}        {row['visco']:.5f} / \n")                            
                             else:
-                                text_file.write(f"          {row['pressure']:.1f}      {row['bo']:.4f}        {row['visco']:.4f}  \n")
+                                text_file.write(f"          {row['pressure']:.1f}      {row['bo']:.5f}        {row['visco']:.5f}  \n")
                         r +=1
                 text_file.write(" / \n\n\n")
 
@@ -244,9 +252,17 @@ class OilGas :
                 
                 # the gas is based on constant rv 
                 r = 0
-                for _,row  in df.iterrows():
+                for p in df['press'].unique():
+                    rv_list = sorted(list(set(df['rv'].unique().tolist())), reverse=True)
+                    #print(set(rv_list))
+                    temp = df.loc[df.press ==p]
 
-                    text_file.write(f"{row['press']:.1f}    {row['rv']:.6f}    {row['bg']:.5f}        {row['ug']:.4f}  / \n")
+                    text_file.write(f"{float(temp['press']):.1f}    {float(temp['rv']):.7f}    {float(temp['bg']):.5f}        {float(temp['ug']):.4f}   \n")
+
+                    for rv in rv_list:
+                        if int(rv * 1E4) < int(float(temp['rv'])*1E4)  and int(rv*1e4)>0:
+                            text_file.write(f"            {rv:.7f}    {float(temp['bg']):.5f}        {float(temp['ug']):.4f}   \n")
+                    text_file.write(f"            {0:.6f}    {float(temp['bg']):.5f}        {float(temp['ug']):.4f}  / \n")
                 
                 text_file.write(" / \n\n\n")
                    

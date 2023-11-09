@@ -34,7 +34,7 @@ class Water :
         ucnv = UnitConverter().convert
 
         if rsw == 0:
-             rsw = self.gasSolubility(temp=temp, press=press, unit_system=unit_system)
+             rsw = self.gasSolubility(temp=temp, press=press, unit_system=unit_system, salt=salt)
         # Correlation is in field units
         if unit_system.lower() == "metric":
             press = ucnv(press, "bar", "psi")
